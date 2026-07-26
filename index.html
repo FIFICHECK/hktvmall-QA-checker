@@ -2607,6 +2607,289 @@ function checkPDPDisclaimer(parsed) {
   };
 })();
 
+// ============================================================================
+// COMPREHENSIVE COMPLIANCE CHECKS — All HKTVmall penalty risks
+// ============================================================================
+const COMPLIANCE_RULES = [
+  {
+    id: 'not_for_sale',
+    name: '🚫 Not For Sale / Tester / Sample',
+    icon: '🔴',
+    severity: 'high',
+    penalty: 'HKTVmall 即時下架 + 罰款',
+    desc: '產品頁面不可出現「Not For Sale」「Tester」「Sample」「Non-saleable」等字眼',
+    detect: function(text) {
+      var kw = ['not for sale', 'not for individual sale', 'tester', 'sample only', 'non-saleable', '非賣品', '樣品', '試用裝'];
+      return matchKeywords(text, kw);
+    }
+  },
+  {
+    id: 'parallel_import',
+    name: '📦 平行進口標記',
+    icon: '🟡',
+    severity: 'medium',
+    penalty: 'Cap.362 商品說明條例',
+    desc: '非本地版本產品必須標明「平行進口」「Parallel Import」',
+    detect: function(text) {
+      var kw = ['平行進口', 'parallel import', 'parallel shipment'];
+      return matchKeywords(text, kw);
+    }
+  },
+  {
+    id: 'expiry_date',
+    name: '📅 食品到期日',
+    icon: '🔴',
+    severity: 'high',
+    penalty: 'Cap.132W 食物及藥物(成分組合及標籤)規例',
+    desc: '食品類產品必須有到期日/此日期前最佳',
+    detect: function(text) {
+      // Check if product is food-like
+      var foodKws = ['食品', '食物', '零食', '飲品', '飲料', '罐頭', '醬料', '調味', '即食', 'food', 'snack', 'drink', 'edible'];
+      var isFood = foodKws.some(function(k) { return text.indexOf(k) !== -1; });
+      if (!isFood) return [];
+      // Check for expiry date
+      var dateKws = ['到期日', '此日期前最佳', 'expiry', 'exp date', 'best before', 'use by', '有效日期'];
+      var hasDate = dateKws.some(function(k) { return text.indexOf(k) !== -1; });
+      return hasDate ? [] : [{ keyword: '⚠️ 缺少到期日', context: '食品類產品但未發現到期日標示' }];
+    }
+  },
+  {
+    id: 'alcohol_warning',
+    name: '🍷 酒精警告標語',
+    icon: '🟡',
+    severity: 'medium',
+    penalty: 'HKTVmall 強制要求',
+    desc: '酒精類產品必須有「未成年請勿飲酒」「禁止酒駕」等 warning',
+    detect: function(text) {
+      var alcoholKws = ['酒', '酒精', 'alcohol', 'beer', 'wine', 'whisky', 'liquor'];
+      var isAlcohol = alcoholKws.some(function(k) { return text.indexOf(k) !== -1; });
+      if (!isAlcohol) return [];
+      var warningKws = ['未成年請勿飲酒', '禁止酒駕', '飲酒過量', 'drink responsibly', '18+'];
+      var hasWarning = warningKws.some(function(k) { return text.indexOf(k) !== -1; });
+      return hasWarning ? [] : [{ keyword: '⚠️ 缺少酒精警告', context: '酒精類產品但未發現警告標語' }];
+    }
+  },
+  {
+    id: 'ingredients_list',
+    name: '🧴 化妝品全成分列表',
+    icon: '🟡',
+    severity: 'medium',
+    penalty: 'Cap.132W + HKTVmall QA 要求',
+    desc: '化妝品/護膚品必須有全成分列表 (Ingredients)',
+    detect: function(text) {
+      var cosKws = ['護膚', '化妝', '面霜', '精華', '乳液', '防曬', '洗面', 'cosmetic', 'skincare', 'cream', 'lotion'];
+      var isCosmetic = cosKws.some(function(k) { return text.indexOf(k) !== -1; });
+      if (!isCosmetic) return [];
+      var ingKws = ['成分', 'ingredients', '全成分', '成分列表', '主要成分'];
+      var hasIngredients = ingKws.some(function(k) { return text.indexOf(k) !== -1; });
+      return hasIngredients ? [] : [{ keyword: '⚠️ 缺少成分列表', context: '化妝品/護膚品但未發現成分列表' }];
+    }
+  },
+  {
+    id: 'electrical_safety',
+    name: '⚡ 電器安全標籤',
+    icon: '🟡',
+    severity: 'medium',
+    penalty: 'Cap.424 消費品安全條例',
+    desc: '電器產品必須有安全認證/合規標籤',
+    detect: function(text) {
+      var elecKws = ['電器', '電子', '充電', '插頭', '電線', '電源', '電動', 'electrical', 'electronics', 'charger', 'plug', 'adapter'];
+      var isElectrical = elecKws.some(function(k) { return text.indexOf(k) !== -1; });
+      if (!isElectrical) return [];
+      var safetyKws = ['安全認證', 'ce認證', '符合安全', 'safety', 'ce marking', 'fcc', 'rohs', 'bs1363'];
+      var hasSafety = safetyKws.some(function(k) { return text.indexOf(k) !== -1; });
+      return hasSafety ? [] : [{ keyword: '⚠️ 缺少安全認證標籤', context: '電器產品但未發現安全認證標示' }];
+    }
+  },
+  {
+    id: 'pharmaceutical',
+    name: '💊 藥劑製品註冊',
+    icon: '🔴',
+    severity: 'high',
+    penalty: 'Cap.138 藥劑業及毒藥條例 — 最高罰款 $100,000 + 監禁',
+    desc: '藥物/藥劑製品必須有 HK-XXXXX 註冊編號',
+    detect: function(text) {
+      var medKws = ['藥', '藥品', '藥物', 'medicine', 'pharmaceutical', '止痛', '退燒', '抗生素', '維他命', 'supplement', '保健'];
+      var isMedicine = medKws.some(function(k) { return text.indexOf(k) !== -1; });
+      if (!isMedicine) return [];
+      var regKws = ['hk-', 'hk ', '註冊編號', '註冊號碼', '藥劑製品', 'pharmacy only', '註冊藥劑'];
+      var hasReg = regKws.some(function(k) { return text.indexOf(k) !== -1; });
+      return hasReg ? [] : [{ keyword: '⚠️ 缺少藥劑製品註冊編號', context: '藥品/保健產品但未發現 HK-XXXXX 註冊編號' }];
+    }
+  },
+  {
+    id: 'bilingual',
+    name: '🌐 中英文對照標籤',
+    icon: '🟢',
+    severity: 'low',
+    penalty: 'Cap.132W — 食物/化妝品需中英文',
+    desc: '食品及化妝品建議中英文對照標籤',
+    detect: function(text) {
+      var hasCH = /[\u4e00-\u9fff]/.test(text);
+      var hasEN = /[a-zA-Z]{3,}/.test(text);
+      if (hasCH && hasEN) return []; // Has both
+      return [{ keyword: '⚠️ 缺少' + (hasCH ? '英文' : '中文') + '標籤', context: '產品應同時提供中英文描述' }];
+    }
+  }
+];
+
+function matchKeywords(text, keywords) {
+  var lower = text.toLowerCase();
+  var found = [];
+  for (var i = 0; i < keywords.length; i++) {
+    if (lower.indexOf(keywords[i].toLowerCase()) !== -1) {
+      found.push({ keyword: keywords[i] });
+    }
+  }
+  return found;
+}
+
+/**
+ * Run all compliance checks on parsed product data
+ * @returns {Array} Array of check results
+ */
+function runComplianceChecks(parsed) {
+  var results = [];
+  if (!parsed) return results;
+
+  var fullText = [parsed.skuName || '', parsed.shortDesc || '', parsed.detailDesc || '', parsed.extra || ''].join(' ');
+
+  for (var i = 0; i < COMPLIANCE_RULES.length; i++) {
+    var rule = COMPLIANCE_RULES[i];
+    var matchResult = rule.detect(fullText);
+
+    if (matchResult && matchResult.length > 0) {
+      // Rule triggered violations found
+      results.push({
+        id: rule.id,
+        name: rule.name,
+        icon: rule.icon,
+        severity: rule.severity,
+        penalty: rule.penalty,
+        desc: rule.desc,
+        status: 'violation',
+        issues: matchResult
+      });
+    } else if (matchResult !== undefined) {
+      // Rule ran but no violations (returned empty array)
+      results.push({
+        id: rule.id,
+        name: rule.name,
+        icon: rule.severity === 'high' ? '✅' : (rule.severity === 'medium' ? '✅' : '✅'),
+        severity: rule.severity,
+        penalty: rule.penalty,
+        desc: rule.desc,
+        status: 'passed',
+        issues: []
+      });
+    }
+    // if matchResult is undefined, rule didn't apply (not relevant product type)
+  }
+  return results;
+}
+
+// Enhance renderResults to also show compliance summary
+(function() {
+  var origRender2 = renderResults;
+  window.renderResults = function(results, parsedData, resultsEn) {
+    // Run PDP check
+    var pdpCheck = checkPDPDisclaimer(parsedData);
+    // Run all compliance checks
+    var complianceResults = runComplianceChecks(parsedData);
+
+    // Call original renderResults
+    origRender2.call(this, results, parsedData, resultsEn);
+
+    var container = document.getElementById('resultsContainer');
+    if (!container) return;
+
+    // 1) PDP Disclaimer section (if applicable)
+    if (pdpCheck && pdpCheck.isRestrictedFood) {
+      var pdpHtml = '<div class="card" style="margin-top:12px;border-left:4px solid ' +
+        (pdpCheck.hasDisclaimer ? '#27ae60' : '#e94560') + ';">';
+      pdpHtml += '<div class="result-header" style="padding:12px 16px;cursor:pointer;" onclick="toggleSection(this)">';
+      pdpHtml += '<span style="font-size:11px;padding:2px 8px;border-radius:4px;margin-right:8px;' +
+        (pdpCheck.hasDisclaimer ? 'background:#efe;color:#27ae60;' : 'background:#fee;color:#e94560;') + '">' +
+        (pdpCheck.hasDisclaimer ? '✅' : '🔴') + '</span>';
+      pdpHtml += '<strong>6. 📋 PDP Disclaimer — 受限制食物售賣許可證</strong>';
+      pdpHtml += ' <span style="font-size:11px;color:#888;">' + (pdpCheck.hasDisclaimer ? '已填寫 ✅' : '⚠️ 未填寫') + '</span>';
+      pdpHtml += '</div>';
+      pdpHtml += '<div class="result-body" style="padding:12px 16px;display:block;">';
+      pdpHtml += '<div style="font-size:13px;margin-bottom:8px;">🔍 偵測到產品類別：<strong>' + pdpCheck.matchedCategory.zh + '</strong></div>';
+      pdpHtml += '<div style="font-size:12px;color:#555;margin-bottom:8px;">許可證號碼：' + pdpCheck.matchedCategory.license + '</div>';
+      if (pdpCheck.hasDisclaimer) {
+        pdpHtml += '<div style="background:#f0fdf4;padding:10px;border-radius:6px;font-size:13px;color:#16a34a;">✅ PDP Disclaimer 已填寫</div>';
+      } else {
+        pdpHtml += '<div style="background:#fef2f2;padding:10px;border-radius:6px;font-size:13px;color:#dc2626;">';
+        pdpHtml += '⚠️ 未檢測到「' + pdpCheck.matchedCategory.zh + '」嘅 PDP Disclaimer<br>';
+        pdpHtml += '<span style="font-size:12px;color:#666;">需要加入：</span><br>';
+        pdpHtml += '<span style="font-size:12px;font-family:monospace;background:#f0f0f0;padding:2px 6px;border-radius:3px;">受限制食物售賣許可證號碼: ' + pdpCheck.matchedCategory.license + '</span><br>';
+        pdpHtml += '<span style="font-size:12px;font-family:monospace;background:#f0f0f0;padding:2px 6px;border-radius:3px;">批簽/批准: ' + pdpCheck.matchedCategory.endorsement_zh + '</span>';
+        pdpHtml += '</div>';
+      }
+      pdpHtml += '</div></div>';
+      container.insertAdjacentHTML('beforeend', pdpHtml);
+    }
+
+    // 2) Comprehensive Compliance Summary
+    if (complianceResults.length > 0) {
+      var totalViolations = complianceResults.filter(function(c) { return c.status === 'violation'; }).length;
+      var passedCount = complianceResults.filter(function(c) { return c.status === 'passed'; }).length;
+      var notApplicable = complianceResults.length - totalViolations - passedCount;
+
+      var compHtml = '<div class="card" style="margin-top:12px;border-left:4px solid ' +
+        (totalViolations > 0 ? '#e94560' : '#27ae60') + ';">';
+      compHtml += '<div class="result-header" style="padding:12px 16px;cursor:pointer;" onclick="toggleSection(this)">';
+      compHtml += '<span style="font-size:11px;padding:2px 8px;border-radius:4px;margin-right:8px;' +
+        (totalViolations > 0 ? 'background:#fee;color:#e94560;' : 'background:#efe;color:#27ae60;') + '">' +
+        (totalViolations > 0 ? '🔴' : '✅') + '</span>';
+      compHtml += '<strong>7. 🛡️ 全面合規檢查 — Compliance Summary</strong>';
+      compHtml += ' <span style="font-size:11px;color:#888;">' +
+        '🔴' + totalViolations + ' 🟡' + (complianceResults.filter(function(c) { return c.severity === 'medium' && c.status === 'violation'; }).length) + ' ✅' + passedCount +
+        '</span>';
+      compHtml += '</div>';
+      compHtml += '<div class="result-body" style="padding:12px 16px;display:block;">';
+
+      for (var ci = 0; ci < complianceResults.length; ci++) {
+        var cr = complianceResults[ci];
+        var isViolation = cr.status === 'violation';
+        var isPassed = cr.status === 'passed';
+
+        compHtml += '<div style="margin-bottom:10px;padding:10px;border-radius:8px;background:' +
+          (isViolation ? '#fef2f2' : (isPassed ? '#f0fdf4' : '#f9fafb')) + ';border:1px solid ' +
+          (isViolation ? '#fecaca' : (isPassed ? '#bbf7d0' : '#e5e7eb')) + ';">';
+        compHtml += '<div style="display:flex;justify-content:space-between;align-items:center;">';
+        compHtml += '<div><strong>' + cr.name + '</strong>';
+        if (isViolation) {
+          compHtml += ' <span style="font-size:11px;padding:2px 6px;border-radius:4px;background:#fecaca;color:#dc2626;">違規</span>';
+        } else if (isPassed) {
+          compHtml += ' <span style="font-size:11px;padding:2px 6px;border-radius:4px;background:#bbf7d0;color:#16a34a;">已符合 ✅</span>';
+        }
+        compHtml += '</div>';
+        compHtml += '<span style="font-size:11px;color:#666;">' + cr.penalty + '</span>';
+        compHtml += '</div>';
+
+        if (isViolation) {
+          compHtml += '<div style="font-size:12px;color:#555;margin-top:4px;">' + cr.desc + '</div>';
+          if (cr.issues && cr.issues.length > 0) {
+            for (var ii = 0; ii < cr.issues.length; ii++) {
+              compHtml += '<div style="font-size:12px;color:#dc2626;margin-top:2px;">⚠ ' + cr.issues[ii].keyword + '</div>';
+              if (cr.issues[ii].context) {
+                compHtml += '<div style="font-size:11px;color:#888;margin-left:12px;">' + cr.issues[ii].context + '</div>';
+              }
+            }
+          }
+        }
+
+        compHtml += '</div>';
+      }
+
+      compHtml += '</div></div>';
+      container.insertAdjacentHTML('beforeend', compHtml);
+    }
+  };
+})();
+
 </script>
 </body>
 </html>
