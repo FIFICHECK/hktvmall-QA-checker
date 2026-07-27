@@ -2986,10 +2986,15 @@ const COMPLIANCE_RULES = [
     desc: '中醫藥/中成藥必須有 HKC-XXXXX 或 HKP-XXXXX 註冊編號',
     detect: function(text) {
       var textLower = text.toLowerCase();
-      // Detect Chinese medicine related product
-      var medKws = ['中藥', '中醫藥', '中成藥', '草藥', '漢方', 'chinese medicine', 'herbal', '中藥材', '中藥方'];
+      // Detect Chinese medicine — require specific TCM keywords, not just 'herbal'
+      var medKws = ['中藥', '中醫藥', '中成藥', '草藥方', '漢方', 'chinese medicine', '中藥材', '中藥方', '中草藥'];
       var isChineseMed = medKws.some(function(k) { return textLower.indexOf(k) !== -1; });
       if (!isChineseMed) return [];
+      // Extra check: ensure it's not just a general supplement mentioning herbal
+      // TCM products should mention specific Chinese medicine concepts
+      var tcmConcepts = ['中藥', '中醫', '中成藥', '漢方', '草藥', 'chinese medicine', 'tcm'];
+      var hasTcmContext = tcmConcepts.some(function(k) { return textLower.indexOf(k) !== -1; });
+      if (!hasTcmContext) return [];
       // Check for registration number
       var hasReg = /hkc-\d{4,5}|hkp-\d{4,5}|中成藥註冊|中藥註冊編號|中成藥註冊編號/i.test(textLower);
       return hasReg ? [] : [{ keyword: '⚠️ 缺少中成藥註冊編號 (HKC-/HKP-)', context: '中醫藥產品但未發現 HKC-XXXXX 或 HKP-XXXXX 註冊編號' }];
@@ -3020,10 +3025,16 @@ const COMPLIANCE_RULES = [
     desc: '玩具/兒童產品必須有安全標準標示（EN71/ISO）及年齡警告',
     detect: function(text) {
       var textLower = text.toLowerCase();
-      var toyKws = ['玩具', '兒童', '嬰兒', 'baby', 'toy', '幼兒', 'kids', '嬰幼兒', '遊戲'];
-      var isToy = toyKws.some(function(k) { return textLower.indexOf(k) !== -1; });
+      // Must have STRONG toy/children signals — avoid false positives from general text
+      var toyKws = ['玩具', 'children\'s toy', '兒童產品', '嬰兒玩具', '幼兒玩具', '益智玩具', '兒童玩具'];
+      var isToyExplicit = toyKws.some(function(k) { return textLower.indexOf(k) !== -1; });
+      // Also detect via age-related + toy context
+      var ageKws = ['年齡', '適合', 'age', 'years', '月齡', '歲'];
+      var hasAge = ageKws.some(function(k) { return textLower.indexOf(k) !== -1; });
+      var hasToy = textLower.indexOf('toy') !== -1 || textLower.indexOf('玩具') !== -1;
+      var isToy = isToyExplicit || (hasToy && hasAge);
       if (!isToy) return [];
-      var safetyKws = ['en71', 'iso', '安全標準', '安全認證', '年齡', '適合', 'warning', '窒息', 'age'];
+      var safetyKws = ['en71', 'iso', '安全標準', '安全認證', 'warning', '窒息', 'age warning'];
       var hasSafety = safetyKws.some(function(k) { return textLower.indexOf(k) !== -1; });
       return hasSafety ? [] : [{ keyword: '⚠️ 缺少玩具安全標準 (EN71/ISO) + 年齡標示', context: '玩具/兒童產品但未發現安全標準或年齡警告' }];
     }
