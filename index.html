@@ -354,6 +354,10 @@ footer a { color:#0f3460; }
     <h2>⚡ 高風險關鍵字一覽</h2>
     <div class="rules-panel" id="keywordPreview"></div>
   </div>
+  <div class="card" id="rulesFullReference" style="display:none;">
+    <h2>📋 全面合規檢查概覽</h2>
+    <div class="rules-panel" id="rulesFullContent"></div>
+  </div>
 </div>
 
 <!-- ============= SECTION 3: ABOUT ============= -->
@@ -3132,6 +3136,136 @@ function runComplianceChecks(parsed) {
     }
   };
 })();
+
+// ============================================================================
+// BUILD FULL RULES REFERENCE — auto-generated from all compliance data
+// ============================================================================
+function buildFullRulesReference() {
+  var container = document.getElementById('rulesFullContent');
+  if (!container) return;
+
+  var html = '';
+
+  // Section 1: All Compliance Rules
+  html += '<h3 style="margin-top:0;color:#1a1a2e;">📋 全部檢查規則</h3>';
+  html += '<table style="width:100%;border-collapse:collapse;font-size:12px;margin-bottom:16px;">';
+  html += '<tr style="background:#f0f2f5;"><th style="padding:6px 8px;text-align:left;">規則</th><th style="padding:6px 8px;text-align:left;">類別</th><th style="padding:6px 8px;text-align:left;">法例/罰則</th><th style="padding:6px 8px;text-align:left;">狀態</th></tr>';
+
+  // Collect all rules
+  var allRules = [];
+
+  // From COMPLIANCE_RULES
+  if (typeof COMPLIANCE_RULES !== 'undefined') {
+    COMPLIANCE_RULES.forEach(function(r) {
+      allRules.push({
+        name: r.name,
+        severity: r.severity,
+        penalty: r.penalty,
+        desc: r.desc,
+        source: 'Compliance'
+      });
+    });
+  }
+
+  // From PDP_CATEGORIES
+  if (typeof PDP_CATEGORIES !== 'undefined') {
+    PDP_CATEGORIES.forEach(function(c) {
+      allRules.push({
+        name: '📋 PDP: ' + c.zh,
+        severity: 'high',
+        penalty: 'HKTVmall 強制 - 許可證 ' + c.license,
+        desc: c.endorsement_zh,
+        source: 'PDP'
+      });
+    });
+  }
+
+  // Sort: high first, then medium, then low
+  allRules.sort(function(a, b) {
+    var order = { high: 0, medium: 1, low: 2 };
+    return (order[a.severity] || 3) - (order[b.severity] || 3);
+  });
+
+  allRules.forEach(function(r) {
+    var icon = r.severity === 'high' ? '🔴' : (r.severity === 'medium' ? '🟡' : '🟢');
+    html += '<tr style="border-bottom:1px solid #eee;">';
+    html += '<td style="padding:6px 8px;">' + r.name + '</td>';
+    html += '<td style="padding:6px 8px;"><span style="background:' + (r.severity === 'high' ? '#fee' : (r.severity === 'medium' ? '#fff8e1' : '#f0fdf4')) + ';padding:2px 6px;border-radius:4px;font-size:11px;">' + icon + ' ' + r.severity + '</span></td>';
+    html += '<td style="padding:6px 8px;font-size:11px;color:#555;">' + r.penalty + '</td>';
+    html += '<td style="padding:6px 8px;font-size:11px;color:#888;">' + (r.source === 'PDP' ? '受限制食物' : '全面') + '</td>';
+    html += '</tr>';
+  });
+
+  html += '</table>';
+
+  // Section 2: Keywords reference
+  html += '<h3 style="color:#1a1a2e;margin-top:20px;">🔑 主要偵測關鍵字</h3>';
+  html += '<div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:16px;">';
+
+  var allKeywords = {
+    '🔴 高風險': [
+      '糖尿病', '高血壓', '心臟病', '肝炎', '腫瘤', '癌症', '抗癌',
+      'Not For Sale', 'Tester', 'Sample', '非賣品',
+      'CBD', '大麻二酚', '口服避孕藥', '止痛退燒',
+      '消委會', '消費者委員會'
+    ],
+    '🟡 中度': [
+      '平行進口', '中藥', '中成藥', '除害劑', '殺蟲', '玩具', 'EN71',
+      '急凍', '冷藏', '朱古力', '酒精', '酒',
+      '成分', 'Ingredients', '安全認證',
+      'SKU', '授權', '名牌'
+    ],
+    '🟢 低': [
+      '到期日', '此日期前最佳', 'Best Before',
+      '中英文', 'Chinese', 'English'
+    ]
+  };
+
+  for (var level in allKeywords) {
+    html += '<div style="width:100%;margin:4px 0;font-size:12px;font-weight:600;">' + level + '</div>';
+    allKeywords[level].forEach(function(kw) {
+      html += '<span style="background:#f0f2f5;padding:3px 8px;border-radius:4px;font-size:11px;font-family:monospace;">' + kw + '</span>';
+    });
+  }
+
+  html += '</div>';
+
+  // Section 3: Product category → rules mapping
+  html += '<h3 style="color:#1a1a2e;margin-top:20px;">🏷️ 產品類別對應檢查</h3>';
+  html += '<table style="width:100%;border-collapse:collapse;font-size:12px;">';
+  html += '<tr style="background:#f0f2f5;"><th style="padding:6px 8px;text-align:left;">產品類別</th><th style="padding:6px 8px;text-align:left;">自動檢查項目</th></tr>';
+
+  var categoryMap = [
+    { cat: '食品 / 飲料', checks: '到期日, PDP Disclaimer, 中英文, 平行進口' },
+    { cat: '急凍 / 冷藏食品', checks: '到期日, PDP Disclaimer, 審批狀態, 急凍審批' },
+    { cat: '藥品 / 保健', checks: 'Cap.231 醫藥廣告, 藥劑註冊, 止痛退燒禁止' },
+    { cat: '中醫藥', checks: 'Cap.231, 中成藥註冊 HKC-/HKP-' },
+    { cat: '化妝品 / 護膚', checks: '成分列表, 中英文, 平行進口' },
+    { cat: '電器', checks: '安全認證 CE/FCC/BS1363' },
+    { cat: '玩具 / 兒童', checks: 'EN71, 年齡標示, 安全警告' },
+    { cat: '服裝 / 床上用品', checks: '纖維成分, 洗滌標籤, 產地' },
+    { cat: '酒類', checks: '酒精警告, 未成年警告, PDP (如適用)' },
+    { cat: '除害劑', checks: '除害劑註冊編號' },
+    { cat: '成人用品', checks: 'Cap.390 淫褻及不雅條例' },
+    { cat: '名牌產品', checks: '授權書/正貨證明' },
+    { cat: '所有產品', checks: 'Not For Sale, 平行進口, 消委會, 中英文, 版權' }
+  ];
+
+  categoryMap.forEach(function(m) {
+    html += '<tr style="border-bottom:1px solid #eee;">';
+    html += '<td style="padding:6px 8px;font-weight:600;">' + m.cat + '</td>';
+    html += '<td style="padding:6px 8px;font-size:11px;color:#555;">' + m.checks + '</td>';
+    html += '</tr>';
+  });
+
+  html += '</table>';
+
+  container.innerHTML = html;
+  document.getElementById('rulesFullReference').style.display = '';
+}
+
+// Call after page load
+setTimeout(buildFullRulesReference, 500);
 
 </script>
 </body>
