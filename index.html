@@ -133,8 +133,27 @@ footer a { color:#0f3460; }
 @media (max-width:768px) {
   .container { padding:10px; }
   header { flex-direction:column; text-align:center; padding:16px; }
+  header h1 { font-size:18px; }
   .input-group { flex-direction:column; }
   .section-input textarea { min-height:50px; }
+  .card { padding:14px; }
+  .card h2 { font-size:15px; }
+  .stats-row { gap:6px; }
+  .stat-box { padding:10px 6px; }
+  .stat-box .num { font-size:18px; }
+  .stat-box .label { font-size:10px; }
+  .sku-row { flex-direction:column; gap:8px !important; }
+  .sku-row input { width:100% !important; }
+  .sku-row button { width:100%; justify-content:center; }
+  .nav-bar { flex-wrap:wrap; }
+  .nav-bar a { font-size:11px !important; padding:10px 8px !important; }
+  .section-label { font-size:13px; }
+  .input-hint { font-size:11px; }
+  .summary-table { font-size:11px; }
+  .summary-table th, .summary-table td { padding:4px 6px; }
+  .result-header { padding:8px 12px !important; }
+  .result-body { padding:8px 12px !important; }
+  .leg-badge { font-size:10px; padding:2px 8px; }
 }
 </style>
 </head>
@@ -178,7 +197,7 @@ footer a { color:#0f3460; }
     <h2>🚀 SKU 自動擷取 — 首選模式</h2>
     <div class="section-input">
       <div class="section-label"><span class="num">▶</span> 輸入 SKU ID，系統自動拆解成 5 部份進行分析</div>
-      <div style="display:flex;gap:8px;align-items:stretch;">
+      <div class="sku-row" style="display:flex;gap:8px;align-items:stretch;">
         <input type="text" id="skuAutoInput" style="flex:1;padding:14px 18px;font-size:16px;border:2px solid #0f3460;border-radius:8px;font-family:inherit;" placeholder="H0888001_S_123456789">
         <button class="btn btn-primary" id="autoCheckBtn" onclick="autoCheckSKU()" style="font-size:15px;padding:14px 24px;white-space:nowrap;">🔍 自動檢查</button>
         <button class="btn" id="extInstallBtn" onclick="showExtInstallModal()" style="font-size:14px;padding:14px 16px;white-space:nowrap;background:#4338ca;color:white;border:none;border-radius:8px;cursor:pointer;display:inline-flex;align-items:center;gap:4px;">🔌 裝 Extension</button>
