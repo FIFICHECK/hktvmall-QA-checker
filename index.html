@@ -156,15 +156,12 @@ footer a { color:#0f3460; }
   .leg-badge { font-size:10px; padding:2px 8px; }
 }
 /* Accordion-style rule cards */
-.rule-card { margin-bottom:8px; border:1px solid #e0e0e0; border-radius:8px; overflow:hidden; transition:all 0.2s; }
-.rule-card-header { display:flex; justify-content:space-between; align-items:center; padding:10px 12px; cursor:pointer; user-select:none; }
-.rule-card-header:hover { background:#f8f9fa; }
-.rule-card-body { padding:0 12px 10px; display:none; font-size:12px; color:#555; }
-.rule-card.open .rule-card-body { display:block; }
-.rule-card.open .rule-card-header { border-bottom:1px solid #eee; }
-.rule-card .arrow { transition:transform 0.2s; font-size:10px; color:#999; }
-.rule-card.open .arrow { transform:rotate(90deg); }
-
+/* Help button */
+.help-btn { width:36px; height:36px; border-radius:50%; background:#e94560; color:white; border:none; font-size:20px; font-weight:700; cursor:pointer; display:flex; align-items:center; justify-content:center; box-shadow:0 2px 8px rgba(233,69,96,0.3); transition:transform 0.2s; flex-shrink:0; }
+.help-btn:hover { transform:scale(1.1); }
+.help-modal { display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.5); z-index:9999; justify-content:center; align-items:center; }
+.help-modal-content { background:white; border-radius:16px; max-width:600px; width:92%; padding:28px; box-shadow:0 20px 60px rgba(0,0,0,0.3); max-height:85vh; overflow-y:auto; position:relative; }
+.help-modal-close { position:absolute; top:12px; right:16px; background:none; border:none; font-size:24px; cursor:pointer; color:#666; }
 </style>
 </head>
 <body>
@@ -175,6 +172,7 @@ footer a { color:#0f3460; }
     <div class="subtitle">多法例結構化檢查 · SKU 名稱 / 商品簡介 / 詳細介紹 · 自動生成合規修改建議</div>
   </div>
   <div class="leg-badge">多條例</div>
+  <button class="help-btn" onclick="showHelpModal()" title="教學及注意事項">?</button>
 </header>
 
 <!-- Stats -->
@@ -538,6 +536,67 @@ footer a { color:#0f3460; }
 <footer style="text-align:center;padding:16px;color:#888;font-size:13px;">
   · HKTVmall 平台產品 Checker Dashboard · v2.77
 </footer>
+
+<!-- Help Modal -->
+<div class="help-modal" id="helpModal">
+  <div class="help-modal-content">
+    <button class="help-modal-close" onclick="closeHelpModal()">✕</button>
+    <h2 style="margin-top:0;color:#1a1a2e;font-size:18px;">❓ 教學及注意事項</h2>
+
+    <h3 style="color:#e94560;font-size:14px;margin:16px 0 8px;">🚀 SKU 自動擷取（首選模式）</h3>
+    <ol style="font-size:13px;line-height:1.8;padding-left:20px;">
+      <li>喺 <strong>SKU ID</strong> 輸入框貼上產品 SKU（例如 <code>B0185001_S_EUB_7114</code>）</li>
+      <li>Click「🔍 自動檢查」</li>
+      <li>系統會自動 Fetch HKTVmall 頁面，拆解成 <strong>5 部份</strong> 逐項檢查</li>
+      <li>如果有安裝 <strong>Extension</strong>，會自動提取產品圖片做 OCR</li>
+    </ol>
+
+    <h3 style="color:#e94560;font-size:14px;margin:16px 0 8px;">✏️ 手動輸入模式（Fallback）</h3>
+    <ol style="font-size:13px;line-height:1.8;padding-left:20px;">
+      <li>Copy 產品名稱、簡介等文字貼上相應欄位</li>
+      <li>Upload 產品圖片到「包裝圖片檢查」</li>
+      <li>Click「📸 OCR 讀取 & 檢查」或「🔍 檢查輸入內容」</li>
+    </ol>
+
+    <h3 style="color:#e94560;font-size:14px;margin:16px 0 8px;">📦 Batch 批量檢查</h3>
+    <ul style="font-size:13px;line-height:1.8;padding-left:20px;">
+      <li>每行一個 SKU ID</li>
+      <li>系統會逐個 Fetch，有 rate limit 請耐心等候</li>
+      <li>亦可以 Upload CSV 進行批量檢查</li>
+    </ul>
+
+    <h3 style="color:#e94560;font-size:14px;margin:16px 0 8px;">🔌 Browser Extension（推薦）</h3>
+    <ul style="font-size:13px;line-height:1.8;padding-left:20px;">
+      <li>安裝 Extension 後可直接從 Browser DOM 提取產品資料</li>
+      <li><strong>解決 CORS proxy 限制</strong>，令圖片檢查正常運作</li>
+      <li>安裝方法：Click「🔌 裝 Extension」跟指示做</li>
+    </ul>
+
+    <h3 style="color:#e94560;font-size:14px;margin:16px 0 8px;">📋 檢查結果點睇</h3>
+    <ul style="font-size:13px;line-height:1.8;padding-left:20px;">
+      <li><strong style="color:#e94560;">🔴 高風險</strong> — 可能違規，建議立即修改</li>
+      <li><strong style="color:#f39c12;">🟡 中度風險</strong> — 需留意，建議跟指引修正</li>
+      <li><strong style="color:#27ae60;">🟢 安全</strong> — 已符合要求</li>
+      <li>每個違規都會有 <strong>引用條例</strong> + <strong>修改建議</strong></li>
+    </ul>
+
+    <h3 style="color:#e94560;font-size:14px;margin:16px 0 8px;">⚠️ 重要聲明</h3>
+    <div style="background:#fef2f2;padding:12px;border-radius:8px;font-size:12px;color:#555;line-height:1.6;">
+      <strong>此工具僅供參考</strong>，唔構成法律意見或代表 HKTVmall QA 立場。<br><br>
+      所有檢查結果只作為參考性質，<strong>一切以 QA 為準</strong>。<br><br>
+      如有疑問請填寫 <strong>MCS 表格</strong> 或直接聯絡 <strong>QA 部門</strong> 查詢。
+    </div>
+
+    <h3 style="color:#e94560;font-size:14px;margin:16px 0 8px;">🕒 自動更新檢查</h3>
+    <ul style="font-size:13px;line-height:1.8;padding-left:20px;">
+      <li>系統每半年（1月1日 + 7月1日）自動檢查 HKTVmall FAQ 有無更新</li>
+      <li>如有更新，會自動通知並建議新規則</li>
+      <li>檢查 URL：QA 指引 + 上載產品前需知</li>
+    </ul>
+
+    <button onclick="closeHelpModal()" style="display:block;width:100%;padding:12px;margin-top:16px;background:#0f3460;color:white;border:none;border-radius:8px;font-size:14px;cursor:pointer;">✔ 了解</button>
+  </div>
+</div>
 
 <script>
 // ==========================================
@@ -3418,47 +3477,18 @@ function buildFullRulesReference() {
 // Call after page load
 setTimeout(buildFullRulesReference, 500);
 
-// Add click-to-toggle accordion on all rule cards
-function initRuleCardAccordion() {
-  var cards = document.querySelectorAll('#section-rules .rules-panel > div[style*="border-left"]');
-  cards.forEach(function(card) {
-    // Extract the first div (header area) and remaining content (body)
-    var header = card.querySelector('div:first-child');
-    if (!header) return;
-    
-    // Create wrapper elements
-    card.classList.add('rule-card');
-    
-    // The header is the first child div (has the title+badge flex)
-    header.classList.add('rule-card-header');
-    
-    // Add arrow to header
-    var arrow = document.createElement('span');
-    arrow.className = 'arrow';
-    arrow.textContent = '▶';
-    header.appendChild(arrow);
-    
-    // Find all non-header content and move to body
-    var body = document.createElement('div');
-    body.className = 'rule-card-body';
-    var childs = card.children;
-    var toMove = [];
-    for (var i = 0; i < childs.length; i++) {
-      if (childs[i] !== header && childs[i] !== body) {
-        toMove.push(childs[i]);
-      }
-    }
-    toMove.forEach(function(el) { body.appendChild(el); });
-    card.appendChild(body);
-    
-    // Click handler
-    card.onclick = function(e) {
-      e.stopPropagation();
-      this.classList.toggle('open');
-    };
-  });
+// Help modal functions
+function showHelpModal() {
+  document.getElementById('helpModal').style.display = 'flex';
 }
-setTimeout(initRuleCardAccordion, 100);
+function closeHelpModal() {
+  document.getElementById('helpModal').style.display = 'none';
+}
+// Close modal on backdrop click
+document.addEventListener('click', function(e) {
+  var modal = document.getElementById('helpModal');
+  if (e.target === modal) modal.style.display = 'none';
+});
 
 </script>
 </body>
