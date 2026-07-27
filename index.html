@@ -2863,6 +2863,96 @@ const COMPLIANCE_RULES = [
       }
       return inconsistencies;
     }
+  },
+  {
+    id: 'cbd_ban',
+    name: '🚫 CBD 大麻二酚產品 — 禁止售賣',
+    icon: '🔴',
+    severity: 'high',
+    penalty: 'HKTVmall 禁止售賣 — 違者下架+罰款',
+    desc: '含大麻二酚 (CBD) 產品禁止喺 HKTVmall 售賣',
+    detect: function(text) {
+      var textLower = text.toLowerCase();
+      var cbdKws = ['cbd', '大麻二酚', 'cannabidiol', '大麻', 'hemp extract', '漢麻', '火麻'];
+      return matchKeywords(text, cbdKws);
+    }
+  },
+  {
+    id: 'painkiller_ban',
+    name: '🚫 止痛退燒藥物 — 禁止售賣',
+    icon: '🔴',
+    severity: 'high',
+    penalty: 'HKTVmall 禁止售賣 — 違者下架+罰款',
+    desc: '含止痛退燒藥物成分產品（如撲熱息痛/布洛芬）禁止自行上架',
+    detect: function(text) {
+      var textLower = text.toLowerCase();
+      var medKws = ['撲熱息痛', 'paracetamol', 'acetaminophen', '布洛芬', 'ibuprofen', '止痛退燒', '退燒藥', '止痛藥'];
+      return matchKeywords(text, medKws);
+    }
+  },
+  {
+    id: 'contraceptive_ban',
+    name: '🚫 口服避孕藥 — 禁止售賣',
+    icon: '🔴',
+    severity: 'high',
+    penalty: 'HKTVmall 禁止售賣 — 違者下架+罰款',
+    desc: '口服避孕藥禁止喺 HKTVmall 售賣',
+    detect: function(text) {
+      var textLower = text.toLowerCase();
+      var cKws = ['口服避孕藥', '避孕丸', '避孕藥', 'oral contraceptive', 'birth control pill'];
+      return matchKeywords(text, cKws);
+    }
+  },
+  {
+    id: 'chocolate_seasonal',
+    name: '🍫 朱古力夏季下架安排',
+    icon: '🟢',
+    severity: 'low',
+    penalty: 'HKTVmall 營運要求 — 5月1日至9月30日暫停',
+    desc: '朱古力類商品於每年 5月1日至9月30日暫停發售（標準集運）',
+    detect: function(text) {
+      var textLower = text.toLowerCase();
+      var chocKws = ['朱古力', 'chocolate', '巧克力'];
+      var isChoc = chocKws.some(function(k) { return textLower.indexOf(k) !== -1; });
+      if (!isChoc) return [];
+      // Check if it's currently summer season (May-Sep)
+      var now = new Date();
+      var month = now.getMonth() + 1;
+      if (month >= 5 && month <= 9) {
+        return [{ keyword: '⚠️ 朱古力夏季下架期（5月-9月）', context: '目前係朱古力暫停發售期，標準集運商戶應已下架' }];
+      }
+      return [];
+    }
+  },
+  {
+    id: 'frozen_approval',
+    name: '🥶 急凍產品 — 需審批上架',
+    icon: '🟡',
+    severity: 'medium',
+    penalty: 'HKTVmall 要求 — 未經審批不可自行上架',
+    desc: '急凍產品（受限制食品）須經審批方可上架',
+    detect: function(text) {
+      var textLower = text.toLowerCase();
+      var frozenKws = ['急凍', '冷藏', '冷凍', 'frozen', '冰鮮'];
+      var isFrozen = frozenKws.some(function(k) { return textLower.indexOf(k) !== -1; });
+      if (!isFrozen) return [];
+      // If it's a restricted food product, we already check PDP disclaimer above
+      // So this is an additional note
+      return [{ keyword: '📌 急凍產品需審批', context: '急凍/冷藏食品須經 HKTVmall 審批方可上架，請確認已提交審批' }];
+    }
+  },
+  {
+    id: 'sku_reuse_penalty',
+    name: '📋 重用 SKU ID — 罰款',
+    icon: '🟡',
+    severity: 'medium',
+    penalty: 'HKTVmall 罰款 — 重用 SKU ID 會產生罰款',
+    desc: '唔可以重用 SKU ID 上載新產品，必須用新 SKU',
+    detect: function(text) {
+      var textLower = text.toLowerCase();
+      var reuseKws = ['重用sku', 'reuse sku', '舊sku', '相同sku', '同一sku'];
+      return matchKeywords(text, reuseKws);
+    }
   }
 ];
 
