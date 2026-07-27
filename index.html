@@ -2730,6 +2730,139 @@ const COMPLIANCE_RULES = [
       if (hasCH && hasEN) return []; // Has both
       return [{ keyword: '⚠️ 缺少' + (hasCH ? '英文' : '中文') + '標籤', context: '產品應同時提供中英文描述' }];
     }
+  },
+  {
+    id: 'consumer_council',
+    name: '🏛️ 消委會條例 Cap.216',
+    icon: '🔴',
+    severity: 'high',
+    penalty: '⚠️ HKTVmall $20,000/SKU + 即時下架',
+    desc: '未經消委會授權，不得使用「消費者委員會」「消委會」名義/調查結果',
+    detect: function(text) {
+      var kw = ['消費者委員會', '消委會', 'consumer council', '消委會評分', '消委會測試', '消委會報告'];
+      return matchKeywords(text, kw);
+    }
+  },
+  {
+    id: 'chinese_medicine',
+    name: '🌿 中醫藥 — 中成藥註冊',
+    icon: '🔴',
+    severity: 'high',
+    penalty: 'Cap.549 中醫藥條例 — 未註冊不可銷售',
+    desc: '中醫藥/中成藥必須有 HKC-XXXXX 或 HKP-XXXXX 註冊編號',
+    detect: function(text) {
+      var textLower = text.toLowerCase();
+      // Detect Chinese medicine related product
+      var medKws = ['中藥', '中醫藥', '中成藥', '草藥', '漢方', 'chinese medicine', 'herbal', '中藥材', '中藥方'];
+      var isChineseMed = medKws.some(function(k) { return textLower.indexOf(k) !== -1; });
+      if (!isChineseMed) return [];
+      // Check for registration number
+      var hasReg = /hkc-\d{4,5}|hkp-\d{4,5}|中成藥註冊|中藥註冊編號|中成藥註冊編號/i.test(textLower);
+      return hasReg ? [] : [{ keyword: '⚠️ 缺少中成藥註冊編號 (HKC-/HKP-)', context: '中醫藥產品但未發現 HKC-XXXXX 或 HKP-XXXXX 註冊編號' }];
+    }
+  },
+  {
+    id: 'pesticide',
+    name: '🧪 除害劑產品註冊',
+    icon: '🔴',
+    severity: 'high',
+    penalty: 'Cap.133 除害劑條例 — 未註冊不可銷售',
+    desc: '除害劑產品必須有除害劑註冊編號 (Pesticide Reg. No.)',
+    detect: function(text) {
+      var textLower = text.toLowerCase();
+      var pestKws = ['除害劑', '殺蟲', '滅蚊', '滅蟻', '滅蟲', '除草', 'pesticide', 'insecticide', 'herbicide', '殺菌劑', '驅蟲'];
+      var isPesticide = pestKws.some(function(k) { return textLower.indexOf(k) !== -1; });
+      if (!isPesticide) return [];
+      var hasReg = /pesticide\s*reg|除害劑註冊|註冊編號.*[0-9]{3,}|reg.*no.*[0-9]{3,}/i.test(textLower);
+      return hasReg ? [] : [{ keyword: '⚠️ 缺少除害劑註冊編號', context: '除害劑產品但未發現註冊編號' }];
+    }
+  },
+  {
+    id: 'toys_children',
+    name: '🧸 玩具及兒童產品安全',
+    icon: '🟡',
+    severity: 'medium',
+    penalty: 'Cap.424 消費品安全條例 + EN71/ISO 標準',
+    desc: '玩具/兒童產品必須有安全標準標示（EN71/ISO）及年齡警告',
+    detect: function(text) {
+      var textLower = text.toLowerCase();
+      var toyKws = ['玩具', '兒童', '嬰兒', 'baby', 'toy', '幼兒', 'kids', '嬰幼兒', '遊戲'];
+      var isToy = toyKws.some(function(k) { return textLower.indexOf(k) !== -1; });
+      if (!isToy) return [];
+      var safetyKws = ['en71', 'iso', '安全標準', '安全認證', '年齡', '適合', 'warning', '窒息', 'age'];
+      var hasSafety = safetyKws.some(function(k) { return textLower.indexOf(k) !== -1; });
+      return hasSafety ? [] : [{ keyword: '⚠️ 缺少玩具安全標準 (EN71/ISO) + 年齡標示', context: '玩具/兒童產品但未發現安全標準或年齡警告' }];
+    }
+  },
+  {
+    id: 'bedding_clothing',
+    name: '👕 床上用品及服裝標籤',
+    icon: '🟡',
+    severity: 'medium',
+    penalty: 'Cap.132W + HKTVmall QA 要求',
+    desc: '服裝/床上用品必須有纖維成分、洗滌標籤、產地標示',
+    detect: function(text) {
+      var textLower = text.toLowerCase();
+      var clothKws = ['服裝', '衣服', '上衣', '褲', '裙', '衫', '睡衣', '床上用品', '床單', '被套', '枕頭', '毛巾', 'clothing', 'garment', 'fabric', 'shirt', 'dress', 'bedding', 'sheet', 'pillow'];
+      var isClothing = clothKws.some(function(k) { return textLower.indexOf(k) !== -1; });
+      if (!isClothing) return [];
+      var labelKws = ['成分', '纖維', 'cotton', 'polyester', '洗滌', '洗濯', '產地', 'made in', '面料', '材質', 'material'];
+      var hasLabel = labelKws.some(function(k) { return textLower.indexOf(k) !== -1; });
+      return hasLabel ? [] : [{ keyword: '⚠️ 缺少纖維成分/洗滌標籤/產地', context: '服裝/床上用品但未發現成分標籤或產地' }];
+    }
+  },
+  {
+    id: 'brand_name',
+    name: '👑 名牌產品授權',
+    icon: '🟡',
+    severity: 'medium',
+    penalty: 'HKTVmall 要求 — 必須有品牌授權書/正貨證明',
+    desc: '名牌/設計師產品必須有授權書或正貨證明',
+    detect: function(text) {
+      var textLower = text.toLowerCase();
+      // Detect luxury brand indicators
+      var brandKws = ['名牌', '正品', '正貨', '專櫃', '原裝正貨', 'brand', 'authentic', 'genuine', '授權', '官方'];
+      var isBrand = brandKws.some(function(k) { return textLower.indexOf(k) !== -1; });
+      if (!isBrand) return [];
+      var authKws = ['授權書', '授權經銷', '官方授權', '正貨證明', 'authorized', 'official', 'certificate', '經銷商'];
+      var hasAuth = authKws.some(function(k) { return textLower.indexOf(k) !== -1; });
+      return hasAuth ? [] : [{ keyword: '⚠️ 名牌產品建議標明授權/正貨聲明', context: '名牌產品但未發現授權書或正貨證明' }];
+    }
+  },
+  {
+    id: 'mini_cup_jelly',
+    name: '🍮 迷你杯裝蒟蒻果凍 — 包裝要求',
+    icon: '🟡',
+    severity: 'medium',
+    penalty: 'HKTVmall QA 要求（生效2026/4/1）',
+    desc: '迷你杯裝蒟蒻果凍必須有安全包裝標示及窒息警告',
+    detect: function(text) {
+      var textLower = text.toLowerCase();
+      var jellyKws = ['蒟蒻果凍', '蒟蒻', 'jelly', 'konjac', '果凍', '迷你杯'];
+      var isJelly = jellyKws.some(function(k) { return textLower.indexOf(k) !== -1; });
+      if (!isJelly) return [];
+      var safetyKws = ['窒息', 'choking', 'warning', '警告', '勿一口吞食', '安全', '小孩', '兒童'];
+      var hasSafety = safetyKws.some(function(k) { return textLower.indexOf(k) !== -1; });
+      return hasSafety ? [] : [{ keyword: '⚠️ 缺少窒息警告及安全包裝標示', context: '迷你杯裝蒟蒻果凍產品但未發現窒息警告（生效2026/4/1）' }];
+    }
+  },
+  {
+    id: 'product_consistency',
+    name: '📋 產品資料一致性（Cap.362）',
+    icon: '🟡',
+    severity: 'medium',
+    penalty: 'Cap.362 商品說明條例',
+    desc: '產品描述、圖片、實物資料必須一致（產地、數量、重量、包裝）',
+    detect: function(text) {
+      var textLower = text.toLowerCase();
+      // Check for common data consistency issues
+      var inconsistencies = [];
+      // Check if product claims contradict
+      if (textLower.indexOf('產地') !== -1 && !textLower.match(/產地.{0,10}(香港|中國|日本|台灣|美國|德國|法國|英國|韓國|意大利|澳洲|馬來西亞|新加坡|泰國|越南)/)) {
+        inconsistencies.push({ keyword: '⚠️ 產地資料不明確', context: '有提及產地但未明確標示來源地' });
+      }
+      return inconsistencies;
+    }
   }
 ];
 
