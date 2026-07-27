@@ -155,6 +155,16 @@ footer a { color:#0f3460; }
   .result-body { padding:8px 12px !important; }
   .leg-badge { font-size:10px; padding:2px 8px; }
 }
+/* Accordion-style rule cards */
+.rule-card { margin-bottom:8px; border:1px solid #e0e0e0; border-radius:8px; overflow:hidden; transition:all 0.2s; }
+.rule-card-header { display:flex; justify-content:space-between; align-items:center; padding:10px 12px; cursor:pointer; user-select:none; }
+.rule-card-header:hover { background:#f8f9fa; }
+.rule-card-body { padding:0 12px 10px; display:none; font-size:12px; color:#555; }
+.rule-card.open .rule-card-body { display:block; }
+.rule-card.open .rule-card-header { border-bottom:1px solid #eee; }
+.rule-card .arrow { transition:transform 0.2s; font-size:10px; color:#999; }
+.rule-card.open .arrow { transform:rotate(90deg); }
+
 </style>
 </head>
 <body>
@@ -3407,6 +3417,48 @@ function buildFullRulesReference() {
 
 // Call after page load
 setTimeout(buildFullRulesReference, 500);
+
+// Add click-to-toggle accordion on all rule cards
+function initRuleCardAccordion() {
+  var cards = document.querySelectorAll('#section-rules .rules-panel > div[style*="border-left"]');
+  cards.forEach(function(card) {
+    // Extract the first div (header area) and remaining content (body)
+    var header = card.querySelector('div:first-child');
+    if (!header) return;
+    
+    // Create wrapper elements
+    card.classList.add('rule-card');
+    
+    // The header is the first child div (has the title+badge flex)
+    header.classList.add('rule-card-header');
+    
+    // Add arrow to header
+    var arrow = document.createElement('span');
+    arrow.className = 'arrow';
+    arrow.textContent = '▶';
+    header.appendChild(arrow);
+    
+    // Find all non-header content and move to body
+    var body = document.createElement('div');
+    body.className = 'rule-card-body';
+    var childs = card.children;
+    var toMove = [];
+    for (var i = 0; i < childs.length; i++) {
+      if (childs[i] !== header && childs[i] !== body) {
+        toMove.push(childs[i]);
+      }
+    }
+    toMove.forEach(function(el) { body.appendChild(el); });
+    card.appendChild(body);
+    
+    // Click handler
+    card.onclick = function(e) {
+      e.stopPropagation();
+      this.classList.toggle('open');
+    };
+  });
+}
+setTimeout(initRuleCardAccordion, 100);
 
 </script>
 </body>
