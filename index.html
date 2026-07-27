@@ -178,10 +178,11 @@ footer a { color:#0f3460; }
     <h2>🚀 SKU 自動擷取 — 首選模式</h2>
     <div class="section-input">
       <div class="section-label"><span class="num">▶</span> 輸入 SKU ID，系統自動拆解成 5 部份進行分析</div>
-      <div style="display:flex;gap:10px;align-items:stretch;">
+      <div style="display:flex;gap:8px;align-items:stretch;">
         <input type="text" id="skuAutoInput" style="flex:1;padding:14px 18px;font-size:16px;border:2px solid #0f3460;border-radius:8px;font-family:inherit;" placeholder="H0888001_S_123456789">
-        <button class="btn btn-primary" id="autoCheckBtn" onclick="autoCheckSKU()" style="font-size:16px;padding:14px 28px;">🔍 自動檢查</button>
-        <button class="btn btn-secondary" id="extInstallBtn" onclick="showExtInstallModal()" style="font-size:13px;padding:12px 18px;white-space:nowrap;background:#4338ca;color:white;border:none;border-radius:8px;cursor:pointer;display:flex;align-items:center;gap:6px;">🔌 裝 Extension 加強圖像檢查</button>      </div>
+        <button class="btn btn-primary" id="autoCheckBtn" onclick="autoCheckSKU()" style="font-size:15px;padding:14px 24px;white-space:nowrap;">🔍 自動檢查</button>
+        <button class="btn" id="extInstallBtn" onclick="showExtInstallModal()" style="font-size:14px;padding:14px 16px;white-space:nowrap;background:#4338ca;color:white;border:none;border-radius:8px;cursor:pointer;display:inline-flex;align-items:center;gap:4px;">🔌 裝 Extension</button>
+      </div>
     </div>
     <div class="input-hint">💡 系統會 Fetch HKTVmall 產品頁面 → 自動拆解成 產品名稱 / 商品簡介 / 詳細介紹 / 標籤 / 包裝圖片文字 → 逐部份分析平台產品合規 → 每部份提供完整修改建議</div>
   </div>
