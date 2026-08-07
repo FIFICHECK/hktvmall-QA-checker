@@ -628,6 +628,18 @@ const CAP231_RULES = {
     '青光眼':{risk:'high',section:'3(1)(a)',schedule:'附表1',fix:'移除'},
     '肺癆':{risk:'high',section:'3(1)(a)',schedule:'附表1',fix:'移除'},
   },
+  hormoneClaims: {
+    '荷爾蒙':{risk:'high',section:'附表1',fix:'改用「內分泌平衡」或一般保健描述'},
+    '賀爾蒙':{risk:'high',section:'附表1',fix:'改用「內分泌平衡」或一般保健描述'},
+    '荷爾蒙失調':{risk:'high',section:'附表1',fix:'改用「維持身體機能平衡」'},
+    '賀爾蒙失調':{risk:'high',section:'附表1',fix:'改用「維持身體機能平衡」'},
+    '荷爾蒙補充':{risk:'high',section:'3(1)(b)',fix:'改用「營養支持」'},
+    '荷爾蒙治療':{risk:'high',section:'3(1)(b)',fix:'絕對不可使用！'},
+    '激素治療':{risk:'high',section:'3(1)(b)',fix:'絕對不可使用！'},
+    '荷爾蒙平衡':{risk:'medium',section:'一般醫療聲稱',fix:'改用「維持身體機能平衡」'},
+    '內分泌失調':{risk:'high',section:'附表1',fix:'改用「維持身體機能平衡」'},
+    '內分泌':{risk:'medium',section:'一般醫療聲稱',fix:'小心使用，避免配合治療性字眼'},
+  },
   therapeutic: {
     '治療':{risk:'high',section:'3(1)(b)',fix:'改用「有助維持」「促進」'},
     '治愈':{risk:'high',section:'3(1)(b)',fix:'絕對不可使用！'},
@@ -3426,6 +3438,7 @@ function buildFullRulesReference() {
   var allKeywords = {
     '🔴 高風險': [
       '糖尿病', '高血壓', '心臟病', '肝炎', '腫瘤', '癌症', '抗癌',
+      '荷爾蒙', '賀爾蒙', '內分泌失調', '激素治療',
       'Not For Sale', 'Tester', 'Sample', '非賣品',
       'CBD', '大麻二酚', '口服避孕藥', '止痛退燒',
       '消委會', '消費者委員會'
