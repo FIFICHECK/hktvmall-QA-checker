@@ -5,7 +5,7 @@ chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
     chrome.tabs.create({
       url: 'https://fificheck.github.io/hktvmall-QA-checker/?extension=true'
     });
-    sendResponse({ success: true, tabOpened: true });
+    sendResponse({ success: true, opened: true });
     return true;
   }
 
@@ -31,6 +31,31 @@ chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
         });
         sendResponse({ sent: true, openedNewTab: true });
       }
+    });
+    return true; // Keep channel open for async
+  }
+
+  // Dashboard-initiated fetch: find an open HKTVmall product tab and extract that SKU
+  if (request.action === 'fetchProduct') {
+    var sku = request.sku;
+    chrome.tabs.query({ url: 'https://www.hktvmall.com/*' }, function(tabs) {
+      // ONLY use a tab whose URL actually contains the requested SKU — otherwise the
+      // extracted data would be for the wrong product and we'd return wrong results.
+      var target = tabs.find(function(t) { return t.url && t.url.indexOf(sku) >= 0; });
+      if (!target) {
+        // No matching tab open — tell dashboard to fall back to CORS proxy
+        sendResponse({ success: false, error: 'NO_MATCHING_TAB' });
+        return;
+      }
+      chrome.tabs.sendMessage(target.id, { action: 'extractProduct' }, function(response) {
+        if (chrome.runtime.lastError || !response || !response.success) {
+          sendResponse({ success: false, error: 'EXTRACT_FAILED' });
+          return;
+        }
+        // Make sure the extracted data carries the requested SKU
+        response.data.sku = sku;
+        sendResponse({ success: true, data: response.data });
+      });
     });
     return true; // Keep channel open for async
   }

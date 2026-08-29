@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; connect-src 'self' https://www.hktvmall.com https://api.allorigins.win https://corsproxy.io; font-src 'self' data:; object-src 'none'; frame-src 'none'; base-uri 'self'; form-action 'self'">
 <title>🩺 HKTVmall 平台產品 Checker Dashboard</title>
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -1522,12 +1523,70 @@ async function autoCheckSKU() {
   // Smooth scroll to results area
   document.getElementById('resultsContainer').scrollIntoView({ behavior:'smooth', block:'start' });
 
+  // === EXTENSION-FIRST: try extension data first, then fall back to CORS proxy ===
+  var extData = window._extensionProductData;
+  var usingExtension = !!(extData && extData.sku === sku && (extData.skuName || extData.shortDesc || extData.detailDesc));
+
+  // If extension is installed but no pre-extracted data, ask it to fetch from an open HKTVmall tab
+  var extInstalled = window.__EXTENSION_LOADED || window._extensionDetected || document.querySelector('[data-extension-marker]');
+  if (!usingExtension && extInstalled) {
+    var statusEl0 = document.getElementById('loadingStatus');
+    if (statusEl0) statusEl0.textContent = '🔌 嘗試透過 Extension 擷取（需要已開啟 HKTVmall 產品頁）...';
+    // Ask content-dashboard.js to request extraction from background → any open HKTVmall tab
+    window._extensionRequestPending = true;
+    try {
+      window.postMessage({ type: 'hktv-qa-request-fetch', sku: sku }, '*');
+    } catch(e) {}
+    // Wait up to 2.5s for extension to respond (event will set _extensionProductData)
+    await new Promise(function(resolve) {
+      var deadline = Date.now() + 2500;
+      var iv = setInterval(function() {
+        if (window._extensionProductData && window._extensionProductData.sku === sku) {
+          clearInterval(iv);
+          window._extensionRequestPending = false;
+          extData = window._extensionProductData;
+          usingExtension = true;
+          window._extensionProductData = null;
+          resolve();
+        } else if (Date.now() > deadline) {
+          clearInterval(iv);
+          window._extensionRequestPending = false;
+          resolve();
+        }
+      }, 100);
+    });
+  }
+
+  if (usingExtension) {
+    var statusEl = document.getElementById('loadingStatus');
+    if (statusEl) statusEl.textContent = '🔌 使用 Extension 擷取資料（無需 CORS proxy）';
+    // Clear stored data so next check re-fetches fresh
+    window._extensionProductData = null;
+  }
+
   // Fetch Chinese + English IN PARALLEL
   var parsed = null, parsedEn = null;
-  var results = await Promise.allSettled([
-    fetchAndParseProduct(sku),
-    fetchAndParseProduct(sku, 'en')
-  ]);
+  var results;
+  if (usingExtension) {
+    // Build a fake result from extension data — no network calls needed
+    results = [
+      { status: 'fulfilled', value: {
+        skuName: extData.skuName || '',
+        shortDesc: extData.shortDesc || '',
+        detailDesc: extData.detailDesc || '',
+        extra: extData.extra || '',
+        packageText: extData.packageText || '',
+        packageImages: extData.packageImages || [],
+        source: 'extension'
+      } },
+      { status: 'fulfilled', value: null }
+    ];
+  } else {
+    results = await Promise.allSettled([
+      fetchAndParseProduct(sku),
+      fetchAndParseProduct(sku, 'en')
+    ]);
+  }
   if (results[0].status === 'fulfilled' && results[0].value && !results[0].value.error) {
     parsed = results[0].value;
   } else if (results[0].status === 'fulfilled' && results[0].value && results[0].value.error) {
@@ -2623,14 +2682,18 @@ window.addEventListener('hktv-qa-extension-data', function(e) {
   var skuInput = document.getElementById('skuAutoInput');
   if (skuInput) {
     skuInput.value = extData.sku;
-    // Also store the extracted package data for OCR
+    // Always store the extracted product data (text + images) for the extension-first flow
     if (extData.packageImages && extData.packageImages.length > 0) {
       window._extensionPackageImages = extData.packageImages;
-      window._extensionProductData = extData;
     }
+    window._extensionProductData = extData;
     // Auto-trigger check with a flag to use extension data for images
     if (typeof autoCheckSKU === 'function') {
-      autoCheckSKU();
+      // If autoCheckSKU is already mid-wait in its extension poll loop, don't re-enter —
+      // it will pick up _extensionProductData itself. Otherwise trigger a fresh check.
+      if (!window._extensionRequestPending) {
+        autoCheckSKU();
+      }
     }
   }
 });
