@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; connect-src 'self' https://www.hktvmall.com https://api.allorigins.win https://corsproxy.io; font-src 'self' data:; object-src 'none'; frame-src 'none'; base-uri 'self'; form-action 'self'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net; worker-src 'self' blob: https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; connect-src 'self' https://www.hktvmall.com https://api.allorigins.win https://corsproxy.io https://cdn.jsdelivr.net https://tessdata.projectnaptha.com blob: data:; font-src 'self' data:; object-src 'none'; frame-src 'none'; base-uri 'self'; form-action 'self'">
 <title>🩺 HKTVmall 平台產品 Checker Dashboard</title>
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -286,7 +286,7 @@ footer a { color:#0f3460; }
     <div class="section-input">
       <div class="section-label"><span class="num">5</span> 包裝圖片檢查 <span class="tag-sm">（Upload 圖片自動 OCR 讀取文字檢查）</span></div>
       <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
-        <input type="file" id="inputPackageImages" accept="image/*" multiple style="flex:1;padding:10px;border:2px dashed #0f3460;border-radius:8px;background:#f8f9ff;">
+        <input type="file" id="inputPackageImages" accept="image/*" multiple onchange="onPackageImagesSelected(event)" style="flex:1;padding:10px;border:2px dashed #0f3460;border-radius:8px;background:#f8f9ff;">
         <button class="btn btn-secondary" onclick="runPackageOCR()" style="white-space:nowrap;">📸 OCR 讀取 & 檢查</button>
       </div>
       <div id="packageOcrStatus" style="font-size:12px;color:#666;margin-top:6px;"></div>
@@ -1376,6 +1376,41 @@ async function runAutoOCROnImages() {
 // ==========================================
 // PACKAGE IMAGE OCR — Manual Upload
 // ==========================================
+// Show preview + hint as soon as user picks image(s)
+function onPackageImagesSelected(event) {
+  var input = event.target;
+  var files = input.files;
+  var statusEl = document.getElementById('packageOcrStatus');
+  var previewEl = document.getElementById('packageImagePreview');
+  if (!files || files.length === 0) {
+    if (previewEl) previewEl.innerHTML = '';
+    if (statusEl) statusEl.textContent = '';
+    return;
+  }
+  if (previewEl) previewEl.innerHTML = '';
+  for (var p = 0; p < files.length; p++) {
+    (function(file) {
+      var reader = new FileReader();
+      reader.onload = function(e) {
+        var img = document.createElement('img');
+        img.src = e.target.result;
+        img.style.cssText = 'width:80px;height:80px;object-fit:cover;border-radius:6px;border:2px solid #ddd;';
+        img.title = file.name;
+        previewEl.appendChild(img);
+      };
+      reader.readAsDataURL(file);
+    })(files[p]);
+  }
+  if (statusEl) {
+    statusEl.textContent = '📎 已選擇 ' + files.length + ' 張圖片 — click「📸 OCR 讀取 & 檢查」或「🔍 檢查輸入內容」開始 OCR 檢查';
+  }
+  // New images chosen → previous OCR results are stale
+  window._ocrResults = null;
+  window._packageOcrMerged = false;
+  var ta = document.getElementById('inputPackageText');
+  if (ta) ta.value = '';
+}
+
 async function runPackageOCR() {
   const input = document.getElementById('inputPackageImages');
   const files = input.files;
@@ -1388,7 +1423,6 @@ async function runPackageOCR() {
   const previewEl = document.getElementById('packageImagePreview');
   const textarea = document.getElementById('inputPackageText');
   const btn = document.querySelector('[onclick="runPackageOCR()"]');
-
   // Show previews
   previewEl.innerHTML = '';
   for (var p = 0; p < files.length; p++) {
@@ -1456,15 +1490,36 @@ async function runPackageOCR() {
   textarea.style.display = '';
   statusEl.textContent = '✅ OCR 完成！共 ' + files.length + ' 張圖片，擷取文字如下。自動執行檢查中...';
   btn.disabled = false;
+  window._ocrResults = allText;
+  window._packageOcrMerged = true; // textarea already filled — don't append again
 
   // Auto-run check
   checkManualProduct();
 }
 
-function checkManualProduct() {
-  // If package OCR images exist in window, include them in the package text
+async function checkManualProduct() {
+  // If user uploaded images but hasn't run OCR yet, run it automatically first
+  var imgInput = document.getElementById('inputPackageImages');
+  var pkgTa = document.getElementById('inputPackageText');
+  var hasImages = imgInput && imgInput.files && imgInput.files.length > 0;
+  var hasOcrText = pkgTa && pkgTa.value.trim().length > 0;
+  if (hasImages && !hasOcrText && !window._packageOcrRunning) {
+    window._packageOcrRunning = true;
+    var st = document.getElementById('packageOcrStatus');
+    if (st) st.textContent = '📸 偵測到已上載圖片，自動開始 OCR（第一次載入引擎會慢少少）...';
+    try {
+      await runPackageOCR(); // fills textarea, then re-calls checkManualProduct()
+    } catch (e) {
+      if (st) st.textContent = '❌ OCR 失敗：' + (e && e.message ? e.message : e);
+    } finally {
+      window._packageOcrRunning = false;
+    }
+    return; // the inner call renders the results
+  }
+
+  // If package OCR images exist in window, include them in the package section
   var packageTextFromOCR = '';
-  if (window._ocrResults && window._ocrResults.length > 0) {
+  if (window._ocrResults && window._ocrResults.length > 0 && !window._packageOcrMerged) {
     var pkgInput = document.getElementById('inputPackageText');
     if (pkgInput) {
       var existing = pkgInput.value.trim();
