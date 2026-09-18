@@ -1026,7 +1026,7 @@ function analyzeSection(text, sectionName) {
         const firstIdx = hay.search(regex);
         issues.push({
           keyword, rule, count: matches.length,
-          context: getContext(hay, keyword),
+          context: extractContext(hay, keyword),
           position: firstIdx >= 0 ? firstIdx : 999999
         });
       }
