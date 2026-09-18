@@ -968,6 +968,9 @@ function analyzeSection(text, sectionName) {
   if (!text || !text.trim()) return null;
   const issues = [];
   const matchedKeywords = [];
+  // OCR often inserts spaces between CJK chars ("糖尿 病" instead of "糖尿病").
+  // Build a variant with those spaces removed so a second matching pass can catch them.
+  const textNorm = text.replace(/([\u4e00-\u9fff\u3000-\u303f])\s+(?=[\u4e00-\u9fff\u3000-\u303f])/g, '$1');
 
   Object.keys(CAP231_RULES).forEach(category => {
     Object.entries(CAP231_RULES[category]).forEach(([keyword, rule]) => {
@@ -980,7 +983,14 @@ function analyzeSection(text, sectionName) {
       let regex;
       try { regex = new RegExp(pattern, 'gi'); }
       catch(e) { regex = new RegExp(keyword.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'), 'gi'); }
-      const matches = text.match(regex);
+      // Match against original text first; if nothing found, retry on the
+      // space-normalized variant (OCR artifact: "糖尿 病" → "糖尿病")
+      let hay = text;
+      let matches = text.match(regex);
+      if (!matches && textNorm !== text) {
+        hay = textNorm;
+        matches = textNorm.match(regex);
+      }
       if (matches) {
         // Skip if keyword is in a LEGAL DISCLAIMER context (negative/denial)
         // e.g. "並不供作診斷" "不應作治療" "不適用於預防"
@@ -997,7 +1007,7 @@ function analyzeSection(text, sectionName) {
           // Check if the keyword appears within a disclaimer sentence
           // Use [\s\S] instead of . to match across newlines
           const negRegex = new RegExp(neg.replace(/[.*+?^${}()|[\]\\]/g,'\\$&') + '[\\s\\S]{0,40}' + keyword.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'), 'i');
-          if (negRegex.test(text)) {
+          if (negRegex.test(hay)) {
             isDisclaimer = true;
             break;
           }
@@ -1005,7 +1015,7 @@ function analyzeSection(text, sectionName) {
         // Also check for keyword directly preceded by "非" (e.g., "非醫藥用品")
         if (!isDisclaimer) {
           const directNegRegex = new RegExp('非' + keyword.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'), 'i');
-          if (directNegRegex.test(text)) {
+          if (directNegRegex.test(hay)) {
             isDisclaimer = true;
           }
         }
@@ -1013,10 +1023,10 @@ function analyzeSection(text, sectionName) {
 
         matchedKeywords.push(keyword);
         // Find first occurrence position for text-order sorting
-        const firstIdx = text.search(regex);
+        const firstIdx = hay.search(regex);
         issues.push({
           keyword, rule, count: matches.length,
-          context: extractContext(text, keyword),
+          context: getContext(hay, keyword),
           position: firstIdx >= 0 ? firstIdx : 999999
         });
       }
